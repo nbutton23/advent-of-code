@@ -1,26 +1,29 @@
 package three
 
 import (
-	"sort"
+	// "sort"
+
 	"strconv"
 	"strings"
 )
 
 func FindDistanceToCross(wireOne, wireTwo string) int {
-
-	crossPoints := FindCrossPoints(wireOne, wireTwo)
-	if len(crossPoints) > 0 {
-		return crossPoints[0].ManhattanDistance()
+	wOne := PointsFromString(wireOne)
+	wTwo := PointsFromString(wireTwo)
+	crossPoints := FindCrossPoints(wOne, wTwo)
+	shortestDist := -1
+	for _, d := range crossPoints {
+		if d.ManhattanDistance() < shortestDist || shortestDist == -1 {
+			shortestDist = d.ManhattanDistance()
+		}
 	}
-	return -1
+
+	return shortestDist
 }
 
-func FindCrossPoints(wireOne, wireTwo string) points {
+func FindCrossPoints(wOne, wTwo points) points {
 	pointsThatCross := make([]point, 0)
-	wOne := PointsFromString(wireOne)
-	sort.Sort(wOne)
-	wTwo := PointsFromString(wireTwo)
-	sort.Sort(wTwo)
+
 	for _, p1 := range wOne {
 		for _, p2 := range wTwo {
 
@@ -48,9 +51,9 @@ func FindCrossPoints(wireOne, wireTwo string) points {
 }
 
 func FindBestSteps(wireOne string, wireTwo string) int {
-	crossPoints := FindCrossPoints(wireOne, wireTwo)
 	wOne := PointsFromString(wireOne)
 	wTwo := PointsFromString(wireTwo)
+	crossPoints := FindCrossPoints(wOne, wTwo)
 
 	shortest := -1
 
@@ -80,9 +83,9 @@ func FindStepsToPoint(points []point, pointToFind point) int {
 }
 
 func PointsFromString(wire string) points {
-	points := make([]point, 0)
-	dirs := strings.Split(wire, ",")
 
+	dirs := strings.Split(wire, ",")
+	points := make([]point, 0)
 	x := 0
 	y := 0
 
@@ -98,23 +101,27 @@ func PointsFromString(wire string) points {
 		case "R":
 			for i := 0; i < distance; i++ {
 				x++
-				points = append(points, point{y: y, x: x})
+				points = append(points, point{y: y, x: x, char: '-'})
 			}
+			points[len(points)-1].char = '+'
 		case "L":
 			for i := 0; i < distance; i++ {
 				x--
-				points = append(points, point{y: y, x: x})
+				points = append(points, point{y: y, x: x, char: '-'})
 			}
+			points[len(points)-1].char = '+'
 		case "U":
 			for i := 0; i < distance; i++ {
 				y++
-				points = append(points, point{y: y, x: x})
+				points = append(points, point{y: y, x: x, char: '|'})
 			}
+			points[len(points)-1].char = '+'
 		case "D":
 			for i := 0; i < distance; i++ {
 				y--
-				points = append(points, point{y: y, x: x})
+				points = append(points, point{y: y, x: x, char: '|'})
 			}
+			points[len(points)-1].char = '+'
 		default:
 			// TODO
 			panic(direction)
@@ -126,18 +133,7 @@ func PointsFromString(wire string) points {
 
 type point struct {
 	x, y int
-}
-
-type points []point
-
-func (p points) Len() int {
-	return len(p)
-}
-func (p points) Swap(i, j int) {
-	p[i], p[j] = p[j], p[i]
-}
-func (p points) Less(i, j int) bool {
-	return p[i].ManhattanDistance() < p[j].ManhattanDistance()
+	char rune
 }
 
 func (p point) Equal(in point) bool {
@@ -155,11 +151,151 @@ func (p point) ManhattanDistance() int {
 	}
 
 	absY := p.y
-
 	if absY < 0 {
 		absY *= -1
 	}
 
 	return absX + absY
+}
 
+type points []point
+
+func (p points) Len() int {
+	return len(p)
+}
+func (p points) Swap(i, j int) {
+	p[i], p[j] = p[j], p[i]
+}
+func (p points) Less(i, j int) bool {
+	return p[i].ManhattanDistance() < p[j].ManhattanDistance()
+}
+
+func (p points) Print() string {
+	xMax := -1
+	yMax := -1
+	xMin := -1
+	yMin := -1
+
+	for _, r := range p {
+		if r.x > xMax {
+			xMax = r.x
+		}
+		if r.y > yMax {
+			yMax = r.y
+		}
+		if r.x < xMin {
+			xMin = r.x
+		}
+		if r.y < yMin {
+			yMin = r.y
+		}
+	}
+	xMax += 2
+	yMax += 2
+
+	xMax = (xMin * -1) + xMax
+	yMax = (yMin * -1) + yMax
+
+	graph := make([][]rune, yMax)
+
+	for i := 0; i < yMax; i++ {
+		graph[i] = make([]rune, xMax)
+		for j := 0; j < xMax; j++ {
+			// set the my zero value to *
+			graph[i][j] = '*'
+		}
+	}
+	for _, r := range p {
+		graph[r.y-yMin][r.x-xMin] = r.char
+	}
+
+	graph[0-yMin][0-xMin] = 'O'
+
+	var sb strings.Builder
+	for i := yMax - 1; i >= 0; i-- {
+		// for _, row := range graph {
+		sb.WriteString(string(graph[i]))
+		sb.WriteRune('\n')
+	}
+
+	return sb.String()
+}
+
+func (p points) PrintWithOverlay(o points) string {
+	xMax := -1
+	yMax := -1
+	xMin := -1
+	yMin := -1
+
+	for _, r := range p {
+		if r.x > xMax {
+			xMax = r.x
+		}
+		if r.y > yMax {
+			yMax = r.y
+		}
+		if r.x < xMin {
+			xMin = r.x
+		}
+		if r.y < yMin {
+			yMin = r.y
+		}
+	}
+
+	for _, r := range o {
+		if r.x > xMax {
+			xMax = r.x
+		}
+		if r.y > yMax {
+			yMax = r.y
+		}
+		if r.x < xMin {
+			xMin = r.x
+		}
+		if r.y < yMin {
+			yMin = r.y
+		}
+	}
+	xMax += 2
+	yMax += 2
+
+	xMax = (xMin * -1) + xMax
+	yMax = (yMin * -1) + yMax
+
+	graph := make([][]rune, yMax)
+
+	for i := 0; i < yMax; i++ {
+		graph[i] = make([]rune, xMax)
+		for j := 0; j < xMax; j++ {
+			// set the my zero value to *
+			graph[i][j] = '*'
+		}
+	}
+	for _, r := range p {
+
+		if graph[r.y-yMin][r.x-xMin] != '*' {
+			graph[r.y-yMin][r.x-xMin] = 'x'
+		} else {
+			graph[r.y-yMin][r.x-xMin] = r.char
+		}
+	}
+	for _, r := range o {
+
+		if graph[r.y-yMin][r.x-xMin] != '*' {
+			graph[r.y-yMin][r.x-xMin] = 'x'
+		} else {
+			graph[r.y-yMin][r.x-xMin] = r.char
+		}
+	}
+
+	graph[0-yMin][0-xMin] = 'O'
+
+	var sb strings.Builder
+	for i := yMax - 1; i >= 0; i-- {
+		// for _, row := range graph {
+		sb.WriteString(string(graph[i]))
+		sb.WriteRune('\n')
+	}
+
+	return sb.String()
 }

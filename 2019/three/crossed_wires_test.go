@@ -59,7 +59,9 @@ func Test_FindCrossPoints(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run("", func(t *testing.T) {
-			d := FindCrossPoints(tc.wireOne, tc.wireTwo)
+			wOne := PointsFromString(tc.wireOne)
+			wTwo := PointsFromString(tc.wireTwo)
+			d := FindCrossPoints(wOne, wTwo)
 			assert.ElementsMatch(t, d, tc.pointsThatCross)
 		})
 	}
