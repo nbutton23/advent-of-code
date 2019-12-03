@@ -1,8 +1,10 @@
 package one
 
-import "testing"
+import (
+	"testing"
 
-import "github.com/magiconair/properties/assert"
+	"github.com/stretchr/testify/assert"
+)
 
 func Test_CalculateFuelForModule(t *testing.T) {
 	testCases := []struct {

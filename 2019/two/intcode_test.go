@@ -1,8 +1,9 @@
 package two
 
-import "testing"
-
-import "github.com/stretchr/testify/assert"
+import (
+	"github.com/stretchr/testify/assert"
+	"testing"
+)
 
 func Test_ProccessInstruction(t *testing.T) {
 	p := []int{1, 9, 10, 3, 2, 3, 11, 0, 99, 30, 40, 50}

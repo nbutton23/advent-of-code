@@ -1,0 +1,165 @@
+package three
+
+import (
+	"sort"
+	"strconv"
+	"strings"
+)
+
+func FindDistanceToCross(wireOne, wireTwo string) int {
+
+	crossPoints := FindCrossPoints(wireOne, wireTwo)
+	if len(crossPoints) > 0 {
+		return crossPoints[0].ManhattanDistance()
+	}
+	return -1
+}
+
+func FindCrossPoints(wireOne, wireTwo string) points {
+	pointsThatCross := make([]point, 0)
+	wOne := PointsFromString(wireOne)
+	sort.Sort(wOne)
+	wTwo := PointsFromString(wireTwo)
+	sort.Sort(wTwo)
+	for _, p1 := range wOne {
+		for _, p2 := range wTwo {
+
+			if p1.Equal(p2) {
+				pointsThatCross = append(pointsThatCross, p1)
+			}
+		}
+	}
+
+	for i, j := 0, 0; i < len(wOne) && j < len(wTwo); {
+		p1 := wOne[i]
+		p2 := wTwo[j]
+		if p1.Equal(p2) {
+			pointsThatCross = append(pointsThatCross, p1)
+			i++
+			j++
+		} else if p1.LessThan(p2) {
+			i++
+		} else {
+			j++
+		}
+	}
+
+	return pointsThatCross
+}
+
+func FindBestSteps(wireOne string, wireTwo string) int {
+	crossPoints := FindCrossPoints(wireOne, wireTwo)
+	wOne := PointsFromString(wireOne)
+	wTwo := PointsFromString(wireTwo)
+
+	shortest := -1
+
+	for _, p := range crossPoints {
+		stepsToOne := FindStepsToPoint(wOne, p)
+		stepsToTwo := FindStepsToPoint(wTwo, p)
+
+		// Plus 2 because i am skipping the first step from 0,0
+		total := stepsToOne + stepsToTwo + 2
+
+		if total < shortest || shortest == -1 {
+			shortest = total
+		}
+	}
+
+	return shortest
+}
+
+func FindStepsToPoint(points []point, pointToFind point) int {
+	for i, p := range points {
+		if p.Equal(pointToFind) {
+			return i
+		}
+	}
+
+	return -1
+}
+
+func PointsFromString(wire string) points {
+	points := make([]point, 0)
+	dirs := strings.Split(wire, ",")
+
+	x := 0
+	y := 0
+
+	for _, instruction := range dirs {
+		direction := instruction[0:1]
+		dstring := instruction[1:]
+		distance, err := strconv.Atoi(dstring)
+		if err != nil {
+			// TODO
+			panic(err)
+		}
+		switch direction {
+		case "R":
+			for i := 0; i < distance; i++ {
+				x++
+				points = append(points, point{y: y, x: x})
+			}
+		case "L":
+			for i := 0; i < distance; i++ {
+				x--
+				points = append(points, point{y: y, x: x})
+			}
+		case "U":
+			for i := 0; i < distance; i++ {
+				y++
+				points = append(points, point{y: y, x: x})
+			}
+		case "D":
+			for i := 0; i < distance; i++ {
+				y--
+				points = append(points, point{y: y, x: x})
+			}
+		default:
+			// TODO
+			panic(direction)
+		}
+	}
+
+	return points
+}
+
+type point struct {
+	x, y int
+}
+
+type points []point
+
+func (p points) Len() int {
+	return len(p)
+}
+func (p points) Swap(i, j int) {
+	p[i], p[j] = p[j], p[i]
+}
+func (p points) Less(i, j int) bool {
+	return p[i].ManhattanDistance() < p[j].ManhattanDistance()
+}
+
+func (p point) Equal(in point) bool {
+	return in.x == p.x && in.y == p.y
+}
+
+func (p point) LessThan(in point) bool {
+	return p.x < in.x
+}
+
+func (p point) ManhattanDistance() int {
+	absX := p.x
+	if absX < 0 {
+		absX *= -1
+	}
+
+	absY := p.y
+
+	if absY < 0 {
+		absY *= -1
+	}
+
+	return absX + absY
+
+}
