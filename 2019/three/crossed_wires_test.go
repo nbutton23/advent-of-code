@@ -1,8 +1,9 @@
 package three
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_FindDistanceToCross(t *testing.T) {
@@ -51,8 +52,8 @@ func Test_FindCrossPoints(t *testing.T) {
 			wireOne: "R8,U5,L5,D3",
 			wireTwo: "U7,R6,D4,L4",
 			pointsThatCross: []point{
-				point{3, 3},
-				point{6, 5},
+				point{3, 3, '|'},
+				point{6, 5, '-'},
 			},
 		},
 	}
@@ -112,17 +113,17 @@ func Test_PointsFromString(t *testing.T) {
 			"R3,U2,L1,D2",
 			[]point{
 				// R3
-				point{1, 0},
-				point{2, 0},
-				point{3, 0},
+				point{1, 0, '-'},
+				point{2, 0, '-'},
+				point{3, 0, '+'},
 				// U2
-				point{3, 1},
-				point{3, 2},
+				point{3, 1, '|'},
+				point{3, 2, '+'},
 				// L1
-				point{2, 2},
+				point{2, 2, '+'},
 				// D2
-				point{2, 1},
-				point{2, 0},
+				point{2, 1, '|'},
+				point{2, 0, '+'},
 			},
 		},
 	}
