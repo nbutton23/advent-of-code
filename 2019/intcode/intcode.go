@@ -2,13 +2,17 @@ package intcode
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
+	"io/ioutil"
 	"math"
 	"os"
 	"strconv"
 	"strings"
 )
 
+var decomp = true
+var cmdsRan = bytes.Buffer{}
 var oStream = fmt.Println
 var instructionSet = map[int]func(i int, c intermediatInstruct, program []int) int{
 	1:  add,
@@ -24,7 +28,7 @@ var instructionSet = map[int]func(i int, c intermediatInstruct, program []int) i
 
 // ProcessProgram takes a intcode program and runs it to completion or error
 func ProcessProgram(i int, program []int) error {
-
+	cmdsRan = bytes.Buffer{}
 	for i < len(program) && i >= 0 {
 		c := BreakUpOpCode(program[i])
 		if cmd, ok := instructionSet[c.Code]; ok {
@@ -33,10 +37,17 @@ func ProcessProgram(i int, program []int) error {
 			return fmt.Errorf("unknown instruction: %v", c)
 		}
 	}
+
+	tmpfile, _ := ioutil.TempFile("temp", "program-output")
+	tmpfile.Write(cmdsRan.Bytes())
+	tmpfile.Close()
 	return nil
 }
 
 func halt(i int, c intermediatInstruct, program []int) int {
+	if decomp {
+		cmdsRan.WriteString("HALT\n")
+	}
 	return -1
 }
 
@@ -47,6 +58,14 @@ func add(i int, c intermediatInstruct, program []int) int {
 	p3 := retPram(i+3, program, true)
 
 	program[p3] = p1 + p2
+
+	if decomp {
+		pr1 := retPramString(i+1, c.P1Immediate)
+		pr2 := retPramString(i+2, c.P2Immediate)
+		pr3 := retPramString(i+3, true)
+
+		cmdsRan.WriteString(fmt.Sprintf("ADD %s %s %s\n", pr1, pr2, pr3))
+	}
 	return i + 4
 }
 
@@ -56,6 +75,15 @@ func multiply(i int, c intermediatInstruct, program []int) int {
 	p3 := retPram(i+3, program, true)
 
 	program[p3] = p1 * p2
+
+	if decomp {
+		pr1 := retPramString(i+1, c.P1Immediate)
+		pr2 := retPramString(i+2, c.P2Immediate)
+		pr3 := retPramString(i+3, true)
+
+		cmdsRan.WriteString(fmt.Sprintf("MUL %s %s %s\n", pr1, pr2, pr3))
+	}
+
 	return i + 4
 }
 
@@ -72,12 +100,24 @@ func input(i int, c intermediatInstruct, program []int) int {
 		panic(err)
 	}
 	program[p1] = inInt
+
+	if decomp {
+		pr1 := retPramString(i+1, true)
+
+		cmdsRan.WriteString(fmt.Sprintf("IN %s\n", pr1))
+	}
+
 	return i + 2
 }
 func output(i int, c intermediatInstruct, program []int) int {
 	p1 := retPram(i+1, program, c.P1Immediate)
 	out := p1
 	oStream(out)
+	if decomp {
+		pr1 := retPramString(i+1, c.P1Immediate)
+
+		cmdsRan.WriteString(fmt.Sprintf("OUT %s\n", pr1))
+	}
 	return i + 2
 }
 
@@ -91,6 +131,12 @@ func jumpIfTrue(i int, c intermediatInstruct, program []int) int {
 		return p2
 
 	}
+	if decomp {
+		pr1 := retPramString(i+1, c.P1Immediate)
+		pr2 := retPramString(i+2, c.P2Immediate)
+
+		cmdsRan.WriteString(fmt.Sprintf("JUP %s %s\n", pr1, pr2))
+	}
 	return i + 3
 
 }
@@ -103,6 +149,12 @@ func jumpIfFalse(i int, c intermediatInstruct, program []int) int {
 		p2 := retPram(i+2, program, c.P2Immediate)
 		return p2
 
+	}
+	if decomp {
+		pr1 := retPramString(i+1, c.P1Immediate)
+		pr2 := retPramString(i+2, c.P2Immediate)
+
+		cmdsRan.WriteString(fmt.Sprintf("JUF %s %s\n", pr1, pr2))
 	}
 	return i + 3
 
@@ -120,6 +172,15 @@ func lessThan(i int, c intermediatInstruct, program []int) int {
 	} else {
 		program[p3] = 0
 	}
+
+	if decomp {
+		pr1 := retPramString(i+1, c.P1Immediate)
+		pr2 := retPramString(i+2, c.P2Immediate)
+		pr3 := retPramString(i+3, true)
+
+		cmdsRan.WriteString(fmt.Sprintf("LES %s %s %s\n", pr1, pr2, pr3))
+	}
+
 	return i + 4
 }
 
@@ -135,6 +196,14 @@ func equal(i int, c intermediatInstruct, program []int) int {
 	} else {
 		program[p3] = 0
 	}
+
+	if decomp {
+		pr1 := retPramString(i+1, c.P1Immediate)
+		pr2 := retPramString(i+2, c.P2Immediate)
+		pr3 := retPramString(i+3, true)
+
+		cmdsRan.WriteString(fmt.Sprintf("EQL %s %s %s\n", pr1, pr2, pr3))
+	}
 	return i + 4
 }
 
@@ -144,6 +213,13 @@ func retPram(i int, program []int, immediate bool) int {
 	}
 	return program[program[i]]
 
+}
+
+func retPramString(i int, immediate bool) string {
+	if immediate {
+		return fmt.Sprintf("*%d", i)
+	}
+	return fmt.Sprintf("%d", i)
 }
 
 type intermediatInstruct struct {
