@@ -170,6 +170,8 @@ func (p points) Less(i, j int) bool {
 	return p[i].ManhattanDistance() < p[j].ManhattanDistance()
 }
 
+var zero = ' '
+
 func (p points) Print() string {
 	xMax := -1
 	yMax := -1
@@ -201,8 +203,7 @@ func (p points) Print() string {
 	for i := 0; i < yMax; i++ {
 		graph[i] = make([]rune, xMax)
 		for j := 0; j < xMax; j++ {
-			// set the my zero value to *
-			graph[i][j] = '*'
+			graph[i][j] = zero
 		}
 	}
 	for _, r := range p {
@@ -268,27 +269,33 @@ func (p points) PrintWithOverlay(o points) string {
 		graph[i] = make([]rune, xMax)
 		for j := 0; j < xMax; j++ {
 			// set the my zero value to *
-			graph[i][j] = '*'
+			graph[i][j] = zero
 		}
 	}
+
 	for _, r := range p {
 
-		if graph[r.y-yMin][r.x-xMin] != '*' {
-			graph[r.y-yMin][r.x-xMin] = 'x'
-		} else {
-			graph[r.y-yMin][r.x-xMin] = r.char
-		}
+		// if graph[r.y-yMin][r.x-xMin] != zero {
+		// 	graph[r.y-yMin][r.x-xMin] = 'x'
+		// } else {
+		graph[r.y-yMin][r.x-xMin] = r.char
+		// }
 	}
 	for _, r := range o {
 
-		if graph[r.y-yMin][r.x-xMin] != '*' {
-			graph[r.y-yMin][r.x-xMin] = 'x'
-		} else {
-			graph[r.y-yMin][r.x-xMin] = r.char
-		}
+		// if graph[r.y-yMin][r.x-xMin] != zero {
+		// 	graph[r.y-yMin][r.x-xMin] = 'x'
+		// } else {
+		graph[r.y-yMin][r.x-xMin] = r.char
+		// }
 	}
 
-	graph[0-yMin][0-xMin] = 'O'
+	crossPoints := FindCrossPoints(p, o)
+	for _, r := range crossPoints {
+		graph[r.y-yMin][r.x-xMin] = 'x'
+	}
+
+	graph[0-yMin][0-xMin] = '\u25A1'
 
 	var sb strings.Builder
 	for i := yMax - 1; i >= 0; i-- {
