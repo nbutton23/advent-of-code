@@ -1,4 +1,4 @@
-package intcode
+package nine
 
 import (
 	"strconv"
