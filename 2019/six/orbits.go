@@ -26,6 +26,7 @@ func NewBody(ID string, ParentID string) *Body {
 		Parent:    p,
 
 		orbitCount: -1,
+		routeMap:   make(map[string]int),
 	}
 
 	p.AddChild(b)
@@ -50,25 +51,18 @@ func (b *Body) AddChild(c *Body) {
 }
 
 func (b *Body) RouteTo(ID string, from string) (route bool, steps int) {
-	if b.routeMap == nil {
-		b.routeMap = make(map[string]int)
-	}
+
 	if b.ID == ID {
 		return true, 0
 	}
+	
 	// Cache
 	if c, ok := b.routeMap[ID]; ok && c > 0 {
 		return true, c
 	}
 
-	for _, c := range b.Childeren {
-		if c.ID == from {
-			continue
-		}
-		if ok, count := c.RouteTo(ID, b.ID); ok {
-			b.routeMap[ID] = count + 1
-			return ok, count + 1
-		}
+	if ok, count := b.checkRoutFromChilderen(ID); ok {
+		return ok, count
 	}
 
 	if b.Parent.ID != from {
@@ -82,6 +76,17 @@ func (b *Body) RouteTo(ID string, from string) (route bool, steps int) {
 	return false, 0
 }
 
+func (b *Body) checkRoutFromChilderen(ID string) (bool, int) {
+	for _, c := range b.Childeren {
+		if ok, count := c.RouteTo(ID, b.ID); ok {
+			b.routeMap[ID] = count + 1
+			return ok, count + 1
+		}
+	}
+
+	return false, 0
+}
+
 func ProcessOrbitMap(mapStr string) {
 	// Rest map
 	OrbitMap = make(map[string]*Body)
@@ -91,6 +96,7 @@ func ProcessOrbitMap(mapStr string) {
 		Childeren: make([]*Body, 0),
 
 		orbitCount: -1,
+		routeMap:   make(map[string]int),
 	}
 
 	OrbitMap["COM"] = com
@@ -106,6 +112,7 @@ func ProcessOrbitMap(mapStr string) {
 				Childeren: make([]*Body, 0),
 
 				orbitCount: -1,
+				routeMap:   make(map[string]int),
 			}
 			OrbitMap[p] = pBody
 		}

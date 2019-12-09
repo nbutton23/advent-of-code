@@ -8,30 +8,70 @@ import (
 	"math"
 	"os"
 	"strconv"
-	"strings"
 )
 
-var decomp = true
-var cmdsRan = bytes.Buffer{}
-var oStream = fmt.Println
-var instructionSet = map[int]func(i int, c intermediatInstruct, program []int) int{
-	1:  add,
-	2:  multiply,
-	3:  input,
-	4:  output,
-	5:  jumpIfTrue,
-	6:  jumpIfFalse,
-	7:  lessThan,
-	8:  equal,
-	99: halt,
+var reader = bufio.NewReader(os.Stdin)
+var defaultInStream = func() int {
+	bytes, _, err := reader.ReadLine()
+	if err != nil {
+		panic(err)
+	}
+	text := string(bytes)
+	inInt, err := strconv.Atoi(text)
+	if err != nil {
+		panic(err)
+	}
+	return inInt
+}
+
+type Process struct {
+	inStream       func() int
+	oStream        func(a ...interface{}) (n int, err error)
+	cmdsRan        bytes.Buffer
+	decomp         bool
+	instructionSet map[int]func(i int, c intermediatInstruct, program []int) int
+
+	outputs []int
+}
+
+func NewProccess(inStream func() int, oStream func(a ...interface{}) (n int, err error)) *Process {
+	if inStream == nil {
+		inStream = defaultInStream
+	}
+
+	if oStream == nil {
+		oStream = fmt.Println
+	}
+
+	p := &Process{
+		inStream: inStream,
+		oStream:  oStream,
+
+		cmdsRan: bytes.Buffer{},
+		decomp:  true,
+		outputs: make([]int, 0),
+	}
+
+	p.instructionSet = map[int]func(i int, c intermediatInstruct, program []int) int{
+		1:  p.add,
+		2:  p.multiply,
+		3:  p.input,
+		4:  p.output,
+		5:  p.jumpIfTrue,
+		6:  p.jumpIfFalse,
+		7:  p.lessThan,
+		8:  p.equal,
+		99: p.halt,
+	}
+
+	return p
 }
 
 // ProcessProgram takes a intcode program and runs it to completion or error
-func ProcessProgram(i int, program []int) error {
-	cmdsRan = bytes.Buffer{}
+func (p *Process) ProcessProgram(i int, program []int) error {
 	for i < len(program) && i >= 0 {
 		c := BreakUpOpCode(program[i])
-		if cmd, ok := instructionSet[c.Code]; ok {
+		if cmd, ok := p.instructionSet[c.Code]; ok {
 			i = cmd(i, c, program)
 		} else {
 			return fmt.Errorf("unknown instruction: %v", c)
@@ -39,19 +79,19 @@ func ProcessProgram(i int, program []int) error {
 	}
 
 	tmpfile, _ := ioutil.TempFile("temp", "program-output")
-	tmpfile.Write(cmdsRan.Bytes())
+	tmpfile.Write(p.cmdsRan.Bytes())
 	tmpfile.Close()
 	return nil
 }
 
-func halt(i int, c intermediatInstruct, program []int) int {
-	if decomp {
-		cmdsRan.WriteString("HALT\n")
+func (p *Process) halt(i int, c intermediatInstruct, program []int) int {
+	if p.decomp {
+		p.cmdsRan.WriteString("HALT\n")
 	}
 	return -1
 }
 
-func add(i int, c intermediatInstruct, program []int) int {
+func (p *Process) add(i int, c intermediatInstruct, program []int) int {
 	// Add [input1, input2, output]
 	p1 := retPram(i+1, program, c.P1Immediate)
 	p2 := retPram(i+2, program, c.P2Immediate)
@@ -59,69 +99,61 @@ func add(i int, c intermediatInstruct, program []int) int {
 
 	program[p3] = p1 + p2
 
-	if decomp {
+	if p.decomp {
 		pr1 := retPramString(i+1, c.P1Immediate)
 		pr2 := retPramString(i+2, c.P2Immediate)
 		pr3 := retPramString(i+3, true)
 
-		cmdsRan.WriteString(fmt.Sprintf("ADD %s %s %s\n", pr1, pr2, pr3))
+		p.cmdsRan.WriteString(fmt.Sprintf("ADD %s %s %s\n", pr1, pr2, pr3))
 	}
 	return i + 4
 }
 
-func multiply(i int, c intermediatInstruct, program []int) int {
+func (p *Process) multiply(i int, c intermediatInstruct, program []int) int {
 	p1 := retPram(i+1, program, c.P1Immediate)
 	p2 := retPram(i+2, program, c.P2Immediate)
 	p3 := retPram(i+3, program, true)
 
 	program[p3] = p1 * p2
 
-	if decomp {
+	if p.decomp {
 		pr1 := retPramString(i+1, c.P1Immediate)
 		pr2 := retPramString(i+2, c.P2Immediate)
 		pr3 := retPramString(i+3, true)
 
-		cmdsRan.WriteString(fmt.Sprintf("MUL %s %s %s\n", pr1, pr2, pr3))
+		p.cmdsRan.WriteString(fmt.Sprintf("MUL %s %s %s\n", pr1, pr2, pr3))
 	}
 
 	return i + 4
 }
 
-func input(i int, c intermediatInstruct, program []int) int {
+func (p *Process) input(i int, c intermediatInstruct, program []int) int {
 	// input store at i+1
 	p1 := retPram(i+1, program, true)
-	fmt.Print("-> ")
-	reader := bufio.NewReader(os.Stdin)
-	text, _ := reader.ReadString('\n')
-	text = strings.Replace(text, "\n", "", -1)
+	program[p1] = p.inStream()
 
-	inInt, err := strconv.Atoi(text)
-	if err != nil {
-		panic(err)
-	}
-	program[p1] = inInt
-
-	if decomp {
+	if p.decomp {
 		pr1 := retPramString(i+1, true)
 
-		cmdsRan.WriteString(fmt.Sprintf("IN %s\n", pr1))
+		p.cmdsRan.WriteString(fmt.Sprintf("IN %s\n", pr1))
 	}
 
 	return i + 2
 }
-func output(i int, c intermediatInstruct, program []int) int {
+func (p *Process) output(i int, c intermediatInstruct, program []int) int {
 	p1 := retPram(i+1, program, c.P1Immediate)
 	out := p1
-	oStream(out)
-	if decomp {
+	p.outputs = append(p.outputs, out)
+	p.oStream(out)
+	if p.decomp {
 		pr1 := retPramString(i+1, c.P1Immediate)
 
-		cmdsRan.WriteString(fmt.Sprintf("OUT %s\n", pr1))
+		p.cmdsRan.WriteString(fmt.Sprintf("OUT %s - %d\n", pr1, out))
 	}
 	return i + 2
 }
 
-func jumpIfTrue(i int, c intermediatInstruct, program []int) int {
+func (p *Process) jumpIfTrue(i int, c intermediatInstruct, program []int) int {
 	// jump-if-true: if the first parameter is non-zero, it sets the instruction pointer to the value
 	// from the second parameter. Otherwise, it does nothing.
 	p1 := retPram(i+1, program, c.P1Immediate)
@@ -131,16 +163,16 @@ func jumpIfTrue(i int, c intermediatInstruct, program []int) int {
 		return p2
 
 	}
-	if decomp {
+	if p.decomp {
 		pr1 := retPramString(i+1, c.P1Immediate)
 		pr2 := retPramString(i+2, c.P2Immediate)
 
-		cmdsRan.WriteString(fmt.Sprintf("JUP %s %s\n", pr1, pr2))
+		p.cmdsRan.WriteString(fmt.Sprintf("JEQ %s %s\n", pr1, pr2))
 	}
 	return i + 3
 
 }
-func jumpIfFalse(i int, c intermediatInstruct, program []int) int {
+func (p *Process) jumpIfFalse(i int, c intermediatInstruct, program []int) int {
 	// jump-if-true: if the first parameter is non-zero, it sets the instruction pointer to the value
 	// from the second parameter. Otherwise, it does nothing.
 	p1 := retPram(i+1, program, c.P1Immediate)
@@ -150,17 +182,17 @@ func jumpIfFalse(i int, c intermediatInstruct, program []int) int {
 		return p2
 
 	}
-	if decomp {
+	if p.decomp {
 		pr1 := retPramString(i+1, c.P1Immediate)
 		pr2 := retPramString(i+2, c.P2Immediate)
 
-		cmdsRan.WriteString(fmt.Sprintf("JUF %s %s\n", pr1, pr2))
+		p.cmdsRan.WriteString(fmt.Sprintf("JNE %s %s\n", pr1, pr2))
 	}
 	return i + 3
 
 }
 
-func lessThan(i int, c intermediatInstruct, program []int) int {
+func (p *Process) lessThan(i int, c intermediatInstruct, program []int) int {
 	// less than: if the first parameter is less than the second parameter,
 	// it stores 1 in the position given by the third parameter. Otherwise, it stores 0.
 	p1 := retPram(i+1, program, c.P1Immediate)
@@ -173,18 +205,18 @@ func lessThan(i int, c intermediatInstruct, program []int) int {
 		program[p3] = 0
 	}
 
-	if decomp {
+	if p.decomp {
 		pr1 := retPramString(i+1, c.P1Immediate)
 		pr2 := retPramString(i+2, c.P2Immediate)
 		pr3 := retPramString(i+3, true)
 
-		cmdsRan.WriteString(fmt.Sprintf("LES %s %s %s\n", pr1, pr2, pr3))
+		p.cmdsRan.WriteString(fmt.Sprintf("LES %s %s %s\n", pr1, pr2, pr3))
 	}
 
 	return i + 4
 }
 
-func equal(i int, c intermediatInstruct, program []int) int {
+func (p *Process) equal(i int, c intermediatInstruct, program []int) int {
 	// equals: if the first parameter is equal to the second parameter,
 	// it stores 1 in the position given by the third parameter. Otherwise, it stores 0.
 	p1 := retPram(i+1, program, c.P1Immediate)
@@ -197,12 +229,12 @@ func equal(i int, c intermediatInstruct, program []int) int {
 		program[p3] = 0
 	}
 
-	if decomp {
+	if p.decomp {
 		pr1 := retPramString(i+1, c.P1Immediate)
 		pr2 := retPramString(i+2, c.P2Immediate)
 		pr3 := retPramString(i+3, true)
 
-		cmdsRan.WriteString(fmt.Sprintf("EQL %s %s %s\n", pr1, pr2, pr3))
+		p.cmdsRan.WriteString(fmt.Sprintf("EQL %s %s %s\n", pr1, pr2, pr3))
 	}
 	return i + 4
 }
