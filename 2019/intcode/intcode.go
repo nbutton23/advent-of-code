@@ -29,7 +29,7 @@ type Process struct {
 	oStream        func(a ...interface{}) (n int, err error)
 	cmdsRan        bytes.Buffer
 	decomp         bool
-	instructionSet map[int]func(i int, c instruction, program []int) int
+	instructionSet map[int]func(i int, c instruction) int
 
 	program            []int
 	outputs            []int
@@ -56,7 +56,7 @@ func NewProccess(inStream func() int, oStream func(a ...interface{}) (n int, err
 		relativeBaseOffset: 0,
 	}
 
-	p.instructionSet = map[int]func(i int, c instruction, program []int) int{
+	p.instructionSet = map[int]func(i int, c instruction) int{
 		1:  p.add,
 		2:  p.multiply,
 		3:  p.input,
@@ -75,10 +75,10 @@ func NewProccess(inStream func() int, oStream func(a ...interface{}) (n int, err
 // ProcessProgram takes a intcode program and runs it to completion or error
 func (p *Process) ProcessProgram(i int, program []int) error {
 	p.program = program
-	for i < len(program) && i >= 0 {
-		c := BreakUpOpCode(program[i])
+	for i < len(p.program) && i >= 0 {
+		c := BreakUpOpCode(p.program[i])
 		if cmd, ok := p.instructionSet[c.Code]; ok {
-			i = cmd(i, c, program)
+			i = cmd(i, c)
 		} else {
 			return fmt.Errorf("unknown instruction: %v", c)
 		}
@@ -90,20 +90,20 @@ func (p *Process) ProcessProgram(i int, program []int) error {
 	return nil
 }
 
-func (p *Process) halt(i int, c instruction, program []int) int {
+func (p *Process) halt(i int, c instruction) int {
 	if p.decomp {
 		p.cmdsRan.WriteString("HALT\n")
 	}
 	return -1
 }
 
-func (p *Process) add(i int, c instruction, program []int) int {
+func (p *Process) add(i int, c instruction) int {
 	// Add [input1, input2, output]
-	p1 := p.valueForPram(i+1, program, c.P1Mode)
-	p2 := p.valueForPram(i+2, program, c.P2Mode)
-	p3 := p.indexForPram(i+3, program, c.P3Mode)
+	p1 := p.valueForPram(i+1, p.program, c.P1Mode)
+	p2 := p.valueForPram(i+2, p.program, c.P2Mode)
+	p3 := p.indexForPram(i+3, p.program, c.P3Mode)
 
-	program[p3] = p1 + p2
+	p.program[p3] = p1 + p2
 
 	if p.decomp {
 		pr1 := p.retPramString(i+1, c.P1Mode)
@@ -115,12 +115,12 @@ func (p *Process) add(i int, c instruction, program []int) int {
 	return i + 4
 }
 
-func (p *Process) multiply(i int, c instruction, program []int) int {
-	p1 := p.valueForPram(i+1, program, c.P1Mode)
-	p2 := p.valueForPram(i+2, program, c.P2Mode)
-	p3 := p.indexForPram(i+3, program, c.P3Mode)
+func (p *Process) multiply(i int, c instruction) int {
+	p1 := p.valueForPram(i+1, p.program, c.P1Mode)
+	p2 := p.valueForPram(i+2, p.program, c.P2Mode)
+	p3 := p.indexForPram(i+3, p.program, c.P3Mode)
 
-	program[p3] = p1 * p2
+	p.program[p3] = p1 * p2
 
 	if p.decomp {
 		pr1 := p.retPramString(i+1, c.P1Mode)
@@ -133,10 +133,10 @@ func (p *Process) multiply(i int, c instruction, program []int) int {
 	return i + 4
 }
 
-func (p *Process) input(i int, c instruction, program []int) int {
+func (p *Process) input(i int, c instruction) int {
 	// input store at i+1
-	p1 := p.indexForPram(i+1, program, c.P1Mode)
-	program[p1] = p.inStream()
+	p1 := p.indexForPram(i+1, p.program, c.P1Mode)
+	p.program[p1] = p.inStream()
 
 	if p.decomp {
 		pr1 := p.retPramString(i+1, immediateMode)
@@ -146,8 +146,8 @@ func (p *Process) input(i int, c instruction, program []int) int {
 
 	return i + 2
 }
-func (p *Process) output(i int, c instruction, program []int) int {
-	p1 := p.valueForPram(i+1, program, c.P1Mode)
+func (p *Process) output(i int, c instruction) int {
+	p1 := p.valueForPram(i+1, p.program, c.P1Mode)
 	out := p1
 	p.outputs = append(p.outputs, out)
 	p.oStream(out)
@@ -159,13 +159,13 @@ func (p *Process) output(i int, c instruction, program []int) int {
 	return i + 2
 }
 
-func (p *Process) jumpIfTrue(i int, c instruction, program []int) int {
+func (p *Process) jumpIfTrue(i int, c instruction) int {
 	// jump-if-true: if the first parameter is non-zero, it sets the instruction pointer to the value
 	// from the second parameter. Otherwise, it does nothing.
-	p1 := p.valueForPram(i+1, program, c.P1Mode)
+	p1 := p.valueForPram(i+1, p.program, c.P1Mode)
 
 	if p1 != 0 {
-		p2 := p.valueForPram(i+2, program, c.P2Mode)
+		p2 := p.valueForPram(i+2, p.program, c.P2Mode)
 		return p2
 
 	}
@@ -178,13 +178,13 @@ func (p *Process) jumpIfTrue(i int, c instruction, program []int) int {
 	return i + 3
 
 }
-func (p *Process) jumpIfFalse(i int, c instruction, program []int) int {
+func (p *Process) jumpIfFalse(i int, c instruction) int {
 	// jump-if-true: if the first parameter is non-zero, it sets the instruction pointer to the value
 	// from the second parameter. Otherwise, it does nothing.
-	p1 := p.valueForPram(i+1, program, c.P1Mode)
+	p1 := p.valueForPram(i+1, p.program, c.P1Mode)
 
 	if p1 == 0 {
-		p2 := p.valueForPram(i+2, program, c.P2Mode)
+		p2 := p.valueForPram(i+2, p.program, c.P2Mode)
 		return p2
 
 	}
@@ -198,17 +198,17 @@ func (p *Process) jumpIfFalse(i int, c instruction, program []int) int {
 
 }
 
-func (p *Process) lessThan(i int, c instruction, program []int) int {
+func (p *Process) lessThan(i int, c instruction) int {
 	// less than: if the first parameter is less than the second parameter,
 	// it stores 1 in the position given by the third parameter. Otherwise, it stores 0.
-	p1 := p.valueForPram(i+1, program, c.P1Mode)
-	p2 := p.valueForPram(i+2, program, c.P2Mode)
-	p3 := p.indexForPram(i+3, program, c.P3Mode) //Store at the position returned from here
+	p1 := p.valueForPram(i+1, p.program, c.P1Mode)
+	p2 := p.valueForPram(i+2, p.program, c.P2Mode)
+	p3 := p.indexForPram(i+3, p.program, c.P3Mode) //Store at the position returned from here
 
 	if p1 < p2 {
-		program[p3] = 1
+		p.program[p3] = 1
 	} else {
-		program[p3] = 0
+		p.program[p3] = 0
 	}
 
 	if p.decomp {
@@ -222,17 +222,17 @@ func (p *Process) lessThan(i int, c instruction, program []int) int {
 	return i + 4
 }
 
-func (p *Process) equal(i int, c instruction, program []int) int {
+func (p *Process) equal(i int, c instruction) int {
 	// equals: if the first parameter is equal to the second parameter,
 	// it stores 1 in the position given by the third parameter. Otherwise, it stores 0.
-	p1 := p.valueForPram(i+1, program, c.P1Mode)
-	p2 := p.valueForPram(i+2, program, c.P2Mode)
-	p3 := p.indexForPram(i+3, program, c.P3Mode)
+	p1 := p.valueForPram(i+1, p.program, c.P1Mode)
+	p2 := p.valueForPram(i+2, p.program, c.P2Mode)
+	p3 := p.indexForPram(i+3, p.program, c.P3Mode)
 
 	if p1 == p2 {
-		program[p3] = 1
+		p.program[p3] = 1
 	} else {
-		program[p3] = 0
+		p.program[p3] = 0
 	}
 
 	if p.decomp {
@@ -245,11 +245,11 @@ func (p *Process) equal(i int, c instruction, program []int) int {
 	return i + 4
 }
 
-func (p *Process) adjustRelativeBase(i int, c instruction, program []int) int {
+func (p *Process) adjustRelativeBase(i int, c instruction) int {
 	// adjusts the relative base by the value of its only parameter.
 	// The relative base increases (or decreases, if the value is negative)
 	// by the value of the parameter.
-	p1 := p.valueForPram(i+1, program, c.P1Mode)
+	p1 := p.valueForPram(i+1, p.program, c.P1Mode)
 
 	p.relativeBaseOffset += p1
 	return i + 1
