@@ -1,13 +1,10 @@
 package intcode
 
 import (
-	"fmt"
-	"io/ioutil"
-	"os"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func Test_BreakUpOpCode(t *testing.T) {
@@ -57,9 +54,9 @@ func Test_BreakUpOpCode(t *testing.T) {
 		t.Run("", func(t *testing.T) {
 			c := BreakUpOpCode(tc.ints)
 			assert.Equal(t, tc.op, c.Code)
-			assert.Equal(t, tc.p1, c.P1Immediate)
-			assert.Equal(t, tc.p2, c.P2Immediate)
-			assert.Equal(t, tc.p3, c.P3Immediate)
+			assert.Equal(t, tc.p1, c.P1Mode)
+			assert.Equal(t, tc.p2, c.P2Mode)
+			assert.Equal(t, tc.p3, c.P3Mode)
 		})
 	}
 }
@@ -229,40 +226,30 @@ func Test_IntCode(t *testing.T) {
 		},
 	}
 
-	for _, tc := range testCases {
-		t.Run("", func(t *testing.T) {
-			content := []byte(fmt.Sprintf("%d", tc.input))
-			tmpfile, err := ioutil.TempFile("temp", "test")
-			require.NoError(t, err)
-
-			defer os.Remove(tmpfile.Name()) // clean up
-
-			if _, err := tmpfile.Write(content); err != nil {
-				require.NoError(t, err)
-			}
-
-			if _, err := tmpfile.Seek(0, 0); err != nil {
-				require.NoError(t, err)
-			}
-
-			oldStdin := os.Stdin
-			defer func() { os.Stdin = oldStdin }() // Restore original Stdin
-
-			os.Stdin = tmpfile
-
+	for i, tc := range testCases {
+		
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			inStream := testInputStream([]int{tc.input})
 			pass := false
-			oStream = func(a ...interface{}) (n int, err error) {
+			oStream := func(a ...interface{}) (n int, err error) {
 				pass = assert.Equal(t, tc.expOut, a[0])
 				return 0, nil
 			}
 
-			p := Process{}
-			ProcessProgram(0, tc.program)
+			p := NewProccess(inStream, oStream)
+			p.ProcessProgram(0, tc.program)
 
 			assert.True(t, pass)
-			if err := tmpfile.Close(); err != nil {
-				require.NoError(t, err)
-			}
 		})
+	}
+}
+
+func testInputStream(inputs []int) func() int {
+	in := make(chan int, len(inputs))
+	for _, i := range inputs {
+		in <- i
+	}
+	return func() int {
+		return <-in
 	}
 }
