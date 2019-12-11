@@ -34,6 +34,8 @@ type Process struct {
 	program            []int
 	outputs            []int
 	relativeBaseOffset int
+
+	IsHalted bool
 }
 
 func NewProccess(inStream func() int, oStream func(a ...interface{}) (n int, err error)) *Process {
@@ -50,6 +52,7 @@ func NewProccess(inStream func() int, oStream func(a ...interface{}) (n int, err
 		oStream:  oStream,
 
 		cmdsRan: bytes.Buffer{},
+		decomp:  false,
 
 		outputs:            make([]int, 0),
 		relativeBaseOffset: 0,
@@ -73,6 +76,8 @@ func NewProccess(inStream func() int, oStream func(a ...interface{}) (n int, err
 
 // ProcessProgram takes a intcode program and runs it to completion or error
 func (p *Process) ProcessProgram(i int, program []int) error {
+	p.IsHalted = false
+
 	p.program = program
 	for i < len(p.program) && i >= 0 {
 		code := p.getValue(i)
@@ -83,20 +88,25 @@ func (p *Process) ProcessProgram(i int, program []int) error {
 			return fmt.Errorf("unknown instruction: %v", c)
 		}
 	}
+	p.IsHalted = true
+	p.WriteDecomp()
 
+	return nil
+}
+
+func (p *Process) WriteDecomp() {
 	if p.decomp {
 		tmpfile, _ := ioutil.TempFile("temp", "program-output")
 		tmpfile.Write(p.cmdsRan.Bytes())
 		tmpfile.Close()
 	}
-
-	return nil
 }
 
 func (p *Process) halt(i int, c instruction) int {
 	if p.decomp {
 		p.cmdsRan.WriteString("HALT\n")
 	}
+	p.IsHalted = true
 	return -1
 }
 
@@ -261,14 +271,11 @@ func (p *Process) adjustRelativeBase(i int, c instruction) int {
 
 func (p *Process) getValue(index int) int {
 	if index < 0 {
-		panic("Negitive index!")
+		panic("Negative index!")
 	}
 
 	if index >= len(p.program) {
-		// double the length
-		tempP := make([]int, len(p.program)*2)
-		copy(tempP, p.program)
-		p.program = tempP
+		p.expandMemory(index + 1)
 		// Recursive call so that we keep doubling the memory until it fits.
 		// TODO: We can do better than this.
 		return p.getValue(index)
@@ -277,17 +284,13 @@ func (p *Process) getValue(index int) int {
 	}
 }
 
-// TODO: Create Getters that will allow us to expand pass the current memory
 func (p *Process) setValue(index int, value int) {
 	if index < 0 {
-		panic("Negitive index!")
+		panic("Negative index!")
 	}
 
 	if index >= len(p.program) {
-		// double the length
-		tempP := make([]int, len(p.program)*2)
-		copy(tempP, p.program)
-		p.program = tempP
+		p.expandMemory(index + 1)
 		// Recursive call so that we keep doubling the memory until it fits.
 		// TODO: We can do better than this.
 		p.setValue(index, value)
@@ -296,19 +299,22 @@ func (p *Process) setValue(index int, value int) {
 	}
 }
 
+func (p *Process) expandMemory(min int) {
+	expand := len(p.program) * 2
+	if expand < min {
+		expand = min
+	}
+	// double the length
+	// TODO: We can probably do better than this
+	tempP := make([]int, expand)
+	copy(tempP, p.program)
+	p.program = tempP
+}
+
 // Returns the Value a value.
 func (p *Process) valueForPram(i int, program []int, mode accessMode) int {
-	switch mode {
-	case immediateMode:
-		return p.getValue(i)
-	case positionMode:
-		return p.getValue(p.getValue(i))
-	case relativeMode:
-		pos := p.relativeBaseOffset + p.getValue(i)
-		return p.getValue(pos)
-	default:
-		panic("Received unknown mode")
-	}
+	index := p.indexForPram(i, program, mode)
+	return p.getValue(index)
 }
 
 // Returns the index

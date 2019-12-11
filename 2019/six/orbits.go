@@ -55,7 +55,7 @@ func (b *Body) RouteTo(ID string, from string) (route bool, steps int) {
 	if b.ID == ID {
 		return true, 0
 	}
-	
+
 	// Cache
 	if c, ok := b.routeMap[ID]; ok && c > 0 {
 		return true, c

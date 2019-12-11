@@ -71,7 +71,7 @@ func Test_RenderImage(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run("", func(t *testing.T) {
 			out := RenderImage(tc.input, tc.w, tc.h)
-			
+
 			assert.Equal(t, tc.expected, out)
 		})
 	}

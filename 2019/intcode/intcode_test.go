@@ -252,6 +252,13 @@ func Test_IntCode(t *testing.T) {
 			5,
 			5893654,
 		},
+		// TODO: Expand test to do all outputs
+		// {
+		// Outputs its self
+		// []int{109, 1, 204, -1, 1001, 100, 1, 100, 1008, 100, 16, 101, 1006, 101, 0, 99},
+		// 0, //no input
+		// -1,
+		// },
 		{
 			// output a 16-digit number. uses more memory than inited
 			[]int{1102, 34915192, 34915192, 7, 4, 7, 99, 0},
@@ -279,9 +286,7 @@ func Test_IntCode(t *testing.T) {
 	}
 
 	for i, tc := range testCases {
-		// if i != 29 {
-		// 	continue
-		// }
+
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			inStream := testInputStream([]int{tc.input})
 			pass := false
@@ -378,7 +383,7 @@ func Test_setValue(t *testing.T) {
 			initProgram: []int{1, 1},
 			index:       5,
 			value:       3,
-			endLength:   8,
+			endLength:   6,
 		},
 	}
 
@@ -424,7 +429,7 @@ func Test_getValue(t *testing.T) {
 			initProgram: []int{1, 1},
 			index:       5,
 			value:       0,
-			endLength:   8,
+			endLength:   6,
 		},
 	}
 
