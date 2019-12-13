@@ -15,7 +15,7 @@ func Test_Robot(t *testing.T) {
 	i := painter.Run()
 
 	assert.Equal(t, 249, i)
-	painter.Close()
+	// painter.Close()
 
 	painter.printHull()
 }

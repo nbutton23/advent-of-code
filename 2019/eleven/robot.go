@@ -93,6 +93,7 @@ func genHull(maxX, maxY int) [][]panel {
 	return hull
 }
 func (p *Painter) Close() {
+
 	close(p.inputChan)
 	close(p.inputChan)
 
