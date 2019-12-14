@@ -74,25 +74,30 @@ func key(bodies []*body) string {
 
 func FindRepeat(bodies []*body) int {
 	startTime := time.Now()
-	states := make(map[string]bool)
-	states[key(bodies)] = true
+
+	one := bodies[0].String()
+	start := key(bodies)
+
 	for i := 1; true; i++ {
 		oneStep(bodies)
-		k := key(bodies)
+		b := bodies[0].String()
 
-		if _, ok := states[k]; ok {
-			return i
+		if b == one {
+			k := key(bodies)
+			if k == start {
+				fmt.Printf("Took %s\n", time.Now().Sub(startTime).String())
+
+				return i
+			}
 		}
 
-		if i == 1000000 {
-			fmt.Printf("Took %s to get to 1m\n", time.Now().Sub(startTime).String())
-		}
+		// if i == 1000000 {
+		// 	fmt.Printf("Took %s to get to 1m\n", time.Now().Sub(startTime).String())
+		// }
 
 		if i > 4686774924 {
 			panic("We missed it!")
 		}
-
-		states[k] = true
 	}
 
 	return -1
