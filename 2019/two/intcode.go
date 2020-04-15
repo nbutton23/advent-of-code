@@ -15,16 +15,16 @@ func ProcessProgram(i int, program []int) error {
 	}
 
 	switch opcode {
-	case 1:
-		// Add [input1, input2, output]
-		program[program[i+3]] = program[program[i+1]] + program[program[i+2]]
-	case 2:
-		// Multiply [input1, input2, output]
-		program[program[i+3]] = program[program[i+1]] * program[program[i+2]]
-	case 99:
-		return nil
-	default:
-		return fmt.Errorf("unknown opcode: %d", opcode)
+		case 1:
+			// Add [input1, input2, output]
+			program[program[i+3]] = program[program[i+1]] + program[program[i+2]]
+		case 2:
+			// Multiply [input1, input2, output]
+			program[program[i+3]] = program[program[i+1]] * program[program[i+2]]
+		case 99:
+			return nil
+		default:
+			return fmt.Errorf("unknown opcode: %d", opcode)
 	}
 
 	return ProcessProgram(i+4, program)

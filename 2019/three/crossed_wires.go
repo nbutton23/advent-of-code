@@ -1,8 +1,11 @@
 package three
 
 import (
-	// "sort"
-
+	"fmt"
+	"image"
+	"image/color"
+	"image/png"
+	"os"
 	"strconv"
 	"strings"
 )
@@ -10,7 +13,7 @@ import (
 func FindDistanceToCross(wireOne, wireTwo string) int {
 	wOne := PointsFromString(wireOne)
 	wTwo := PointsFromString(wireTwo)
-	crossPoints := FindCrossPoints(wOne, wTwo)
+	crossPoints := FindCrossPointsV2(wOne, wTwo)
 	shortestDist := -1
 	for _, d := range crossPoints {
 		if d.ManhattanDistance() < shortestDist || shortestDist == -1 {
@@ -33,17 +36,28 @@ func FindCrossPoints(wOne, wTwo points) points {
 		}
 	}
 
-	for i, j := 0, 0; i < len(wOne) && j < len(wTwo); {
-		p1 := wOne[i]
-		p2 := wTwo[j]
-		if p1.Equal(p2) {
-			pointsThatCross = append(pointsThatCross, p1)
-			i++
-			j++
-		} else if p1.LessThan(p2) {
-			i++
-		} else {
-			j++
+	return pointsThatCross
+}
+
+func FindCrossPointsV2(wOne, wTwo points) points {
+
+	wOneMap := make(map[string]point)
+
+	for _, p := range wOne {
+		wOneMap[p.Key()] = p
+	}
+
+	wTwoMap := make(map[string]point)
+
+	for _, p := range wTwo {
+		wTwoMap[p.Key()] = p
+	}
+
+	pointsThatCross := make([]point, 0)
+	for k, _ := range wOneMap {
+		if mp, ok := wTwoMap[k]; ok {
+			mp.char = 'x'
+			pointsThatCross = append(pointsThatCross, mp)
 		}
 	}
 
@@ -158,6 +172,10 @@ func (p point) ManhattanDistance() int {
 	return absX + absY
 }
 
+func (p point) Key() string {
+	return fmt.Sprintf("%d,%d", p.x, p.y)
+}
+
 type points []point
 
 func (p points) Len() int {
@@ -222,6 +240,7 @@ func (p points) Print() string {
 	return sb.String()
 }
 
+// TODO: Overflow protection
 func (p points) PrintWithOverlay(o points) string {
 	xMax := -1
 	yMax := -1
@@ -263,46 +282,64 @@ func (p points) PrintWithOverlay(o points) string {
 	xMax = (xMin * -1) + xMax
 	yMax = (yMin * -1) + yMax
 
-	graph := make([][]rune, yMax)
+	// graph := make([][]rune, yMax)
 
-	for i := 0; i < yMax; i++ {
-		graph[i] = make([]rune, xMax)
-		for j := 0; j < xMax; j++ {
-			// set the my zero value to *
-			graph[i][j] = zero
+	// for i := 0; i < yMax; i++ {
+	// 	graph[i] = make([]rune, xMax)
+	// 	for j := 0; j < xMax; j++ {
+	// 		// set the my zero value to *
+	// 		graph[i][j] = zero
+	// 	}
+	// }
+
+	// for _, r := range p {
+	// 	graph[r.y-yMin][r.x-xMin] = r.char
+	// }
+	// for _, r := range o {
+	// 	graph[r.y-yMin][r.x-xMin] = r.char
+	// }
+
+	// crossPoints := FindCrossPoints(p, o)
+	// for _, r := range crossPoints {
+	// 	graph[r.y-yMin][r.x-xMin] = 'x'
+	// }
+
+	// graph[0-yMin][0-xMin] = '\u25A1'
+
+	// var sb strings.Builder
+	// for i := yMax - 1; i >= 0; i-- {
+	// 	// for _, row := range graph {
+	// 	sb.WriteString(string(graph[i]))
+	// 	sb.WriteRune('\n')
+	// }
+
+	// return sb.String()
+
+	squarSiz := 20
+	rect := image.Rect(0, 0, xMax*squarSiz, yMax*squarSiz)
+	img := image.NewRGBA(rect)
+
+	green := color.RGBA{14, 184, 14, 0xff}
+	blue := color.RGBA{0, 0, 0xff, 0xff}
+
+	for _, r := range p {
+		for y := (r.y - yMin) * squarSiz; y < (r.y-yMin+1)*squarSiz; y++ {
+			for x := (r.x - xMin) * squarSiz; x < (r.x-xMin+1)*squarSiz; x++ {
+				img.Set(x, y, green)
+			}
 		}
 	}
 
-	for _, r := range p {
-
-		// if graph[r.y-yMin][r.x-xMin] != zero {
-		// 	graph[r.y-yMin][r.x-xMin] = 'x'
-		// } else {
-		graph[r.y-yMin][r.x-xMin] = r.char
-		// }
-	}
 	for _, r := range o {
-
-		// if graph[r.y-yMin][r.x-xMin] != zero {
-		// 	graph[r.y-yMin][r.x-xMin] = 'x'
-		// } else {
-		graph[r.y-yMin][r.x-xMin] = r.char
-		// }
+		for y := (r.y - yMin) * squarSiz; y < (r.y-yMin+1)*squarSiz; y++ {
+			for x := (r.x - xMin) * squarSiz; x < (r.x-xMin+1)*squarSiz; x++ {
+				img.Set(x, y, blue)
+			}
+		}
 	}
 
-	crossPoints := FindCrossPoints(p, o)
-	for _, r := range crossPoints {
-		graph[r.y-yMin][r.x-xMin] = 'x'
-	}
+	f, _ := os.Create(fmt.Sprintf("img-%d-%d.png", xMax, yMax))
 
-	graph[0-yMin][0-xMin] = '\u25A1'
-
-	var sb strings.Builder
-	for i := yMax - 1; i >= 0; i-- {
-		// for _, row := range graph {
-		sb.WriteString(string(graph[i]))
-		sb.WriteRune('\n')
-	}
-
-	return sb.String()
+	png.Encode(f, img)
+	return f.Name()
 }

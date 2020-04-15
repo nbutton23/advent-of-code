@@ -47,3 +47,12 @@ U98,R91,D20,R16,D67,R40,U7,R15,U6,R7 = 410 steps
 What is the fewest combined steps the wires must take to reach an intersection?
 
 Your puzzle answer was 122514.
+
+
+
+
+
+<!-- Benchmark_FindCrossPoints-8   	       1	39217105496 ns/op	    3056 B/op	       7 allocs/op
+PASS
+ok  	github.com/nbutton23/advent-of-code/2019/three	39.239s
+Success: Benchmarks passed. -->

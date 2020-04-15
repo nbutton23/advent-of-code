@@ -5,6 +5,11 @@ import (
 
 	"github.com/stretchr/testify/assert"
 )
+func Benchmark_CalculateFuelForModule(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		CalculateFuelForModule(100756)
+	}
+}
 
 func Test_CalculateFuelForModule(t *testing.T) {
 	testCases := []struct {
