@@ -2,33 +2,46 @@ package four
 
 import "math"
 
+// Checker takes a password and returns a Bool if it is valid. 
+type Checker func(p int) bool
+
+// ValidPasswordInRange returns the number of valid passwords in the given range. 
 func ValidPasswordInRange(min, max int) int {
 	count := 0
 	for i := min; i <= max; i++ {
-		if checkIsValid(i) {
+		if checkIsValid(i, checkIsSixDigits, checkRepeatingDigits, checkDoesNotDecrease ) {
 			count++
 		}
 	}
 	return count
 }
 
-func checkIsValid(password int) bool {
-	//It is a six-digit number
-	if password < 100000 || password >= 1000000 {
-		return false
+func checkIsValid(password int, checkers ...Checker) bool {
+	for _, c := range checkers {
+		if !c(password) {
+			return false
+		}
 	}
-	//Two adjacent digits are the same (like 22 in 122345)
-	if !checkRepeatingDigits(password) {
-		return false
-	}
+	
+	return true
+}
+
+func checkDoesNotDecrease(p int) bool {
 	// Going from left to right, the digits never decrease; they only ever increase or stay the same (like 111123 or 135679).
 	last := -1
 	for i := 6; i > 0; i-- {
-		a := digit(password, i)
+		a := digit(p, i)
 		if a < last {
 			return false
 		}
 		last = a
+	}
+	return true
+}
+
+func checkIsSixDigits(p int) bool {
+	if p < 100000 || p >= 1000000 {
+		return false
 	}
 	return true
 }

@@ -33,7 +33,7 @@ func Test_checkIsValid(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run("", func(t *testing.T) {
-			assert.Equal(t, tc.valid, checkIsValid(tc.numb))
+			assert.Equal(t, tc.valid, checkIsValid(tc.numb, checkIsSixDigits, checkRepeatingDigits, checkDoesNotDecrease))
 		})
 	}
 }

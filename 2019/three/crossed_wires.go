@@ -188,13 +188,7 @@ func (p points) Less(i, j int) bool {
 	return p[i].ManhattanDistance() < p[j].ManhattanDistance()
 }
 
-var zero = ' '
-
-func (p points) Print() string {
-	xMax := -1
-	yMax := -1
-	xMin := -1
-	yMin := -1
+func (p points) minMax() (xMin, yMin, xMax, yMax int) {
 
 	for _, r := range p {
 		if r.x > xMax {
@@ -210,135 +204,78 @@ func (p points) Print() string {
 			yMin = r.y
 		}
 	}
-	xMax += 2
-	yMax += 2
 
-	xMax = (xMin * -1) + xMax
-	yMax = (yMin * -1) + yMax
-
-	graph := make([][]rune, yMax)
-
-	for i := 0; i < yMax; i++ {
-		graph[i] = make([]rune, xMax)
-		for j := 0; j < xMax; j++ {
-			graph[i][j] = zero
-		}
-	}
-	for _, r := range p {
-		graph[r.y-yMin][r.x-xMin] = r.char
-	}
-
-	graph[0-yMin][0-xMin] = 'O'
-
-	var sb strings.Builder
-	for i := yMax - 1; i >= 0; i-- {
-		// for _, row := range graph {
-		sb.WriteString(string(graph[i]))
-		sb.WriteRune('\n')
-	}
-
-	return sb.String()
+	return
 }
 
-// TODO: Overflow protection
-func (p points) PrintWithOverlay(o points) string {
-	xMax := -1
-	yMax := -1
-	xMin := -1
-	yMin := -1
-
+func (p points) fillInImage(img *image.RGBA, color color.Color, xMin, yMin int, blockSize int) {
 	for _, r := range p {
-		if r.x > xMax {
-			xMax = r.x
-		}
-		if r.y > yMax {
-			yMax = r.y
-		}
-		if r.x < xMin {
-			xMin = r.x
-		}
-		if r.y < yMin {
-			yMin = r.y
+		for y := (r.y - yMin) * blockSize; y < (r.y-yMin+1)*blockSize; y++ {
+			for x := (r.x - xMin) * blockSize; x < (r.x-xMin+1)*blockSize; x++ {
+				img.Set(x, y, color)
+			}
 		}
 	}
+}
+func (p points) PNG() string {
+	xMin, yMin, xMax, yMax := p.minMax()
 
-	for _, r := range o {
-		if r.x > xMax {
-			xMax = r.x
-		}
-		if r.y > yMax {
-			yMax = r.y
-		}
-		if r.x < xMin {
-			xMin = r.x
-		}
-		if r.y < yMin {
-			yMin = r.y
-		}
-	}
 	xMax += 2
 	yMax += 2
 
 	xMax = (xMin * -1) + xMax
 	yMax = (yMin * -1) + yMax
 
-	// graph := make([][]rune, yMax)
-
-	// for i := 0; i < yMax; i++ {
-	// 	graph[i] = make([]rune, xMax)
-	// 	for j := 0; j < xMax; j++ {
-	// 		// set the my zero value to *
-	// 		graph[i][j] = zero
-	// 	}
-	// }
-
-	// for _, r := range p {
-	// 	graph[r.y-yMin][r.x-xMin] = r.char
-	// }
-	// for _, r := range o {
-	// 	graph[r.y-yMin][r.x-xMin] = r.char
-	// }
-
-	// crossPoints := FindCrossPoints(p, o)
-	// for _, r := range crossPoints {
-	// 	graph[r.y-yMin][r.x-xMin] = 'x'
-	// }
-
-	// graph[0-yMin][0-xMin] = '\u25A1'
-
-	// var sb strings.Builder
-	// for i := yMax - 1; i >= 0; i-- {
-	// 	// for _, row := range graph {
-	// 	sb.WriteString(string(graph[i]))
-	// 	sb.WriteRune('\n')
-	// }
-
-	// return sb.String()
-
+	green := color.RGBA{14, 184, 14, 0xff}
 	squarSiz := 20
+	rect := image.Rect(0, 0, xMax*squarSiz, yMax*squarSiz)
+	img := image.NewRGBA(rect)
+
+	p.fillInImage(img, green, xMin, yMin, squarSiz)
+
+	f, _ := os.Create(fmt.Sprintf("image-%d-%d.png", xMax, yMax))
+
+	png.Encode(f, img)
+	return f.Name()
+}
+
+func (p points) PNGWithOverlay(o points) string {
+	xMin, yMin, xMax, yMax := p.minMax()
+	oxMin, oyMin, oxMax, oyMax := p.minMax()
+
+	if oxMin < xMin {
+		xMin = oxMin
+	}
+
+	if oyMin < yMin {
+		yMin = oyMin
+	}
+
+	if oxMax > xMax {
+		xMax = oxMax
+	}
+
+	if oyMax > yMax {
+		yMax = oyMax
+	}
+
+	xMax += 2
+	yMax += 2
+
+	xMax = (xMin * -1) + xMax
+	yMax = (yMin * -1) + yMax
+
+	squarSiz := 2
 	rect := image.Rect(0, 0, xMax*squarSiz, yMax*squarSiz)
 	img := image.NewRGBA(rect)
 
 	green := color.RGBA{14, 184, 14, 0xff}
 	blue := color.RGBA{0, 0, 0xff, 0xff}
 
-	for _, r := range p {
-		for y := (r.y - yMin) * squarSiz; y < (r.y-yMin+1)*squarSiz; y++ {
-			for x := (r.x - xMin) * squarSiz; x < (r.x-xMin+1)*squarSiz; x++ {
-				img.Set(x, y, green)
-			}
-		}
-	}
+	p.fillInImage(img, green, xMin, yMin, squarSiz)
+	o.fillInImage(img, blue, xMin, yMin, squarSiz)
 
-	for _, r := range o {
-		for y := (r.y - yMin) * squarSiz; y < (r.y-yMin+1)*squarSiz; y++ {
-			for x := (r.x - xMin) * squarSiz; x < (r.x-xMin+1)*squarSiz; x++ {
-				img.Set(x, y, blue)
-			}
-		}
-	}
-
-	f, _ := os.Create(fmt.Sprintf("img-%d-%d.png", xMax, yMax))
+	f, _ := os.Create(fmt.Sprintf("overlay-%d-%d.png", xMax, yMax))
 
 	png.Encode(f, img)
 	return f.Name()
