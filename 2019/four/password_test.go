@@ -15,6 +15,14 @@ func Test_validPasswordsInRange(t *testing.T) {
 	assert.Equal(t, 1419, c)
 }
 
+func Benchmark_validPasswordsInRange(b *testing.B) {
+	min := 130254
+	max := 678275
+	for i := 0; i < b.N; i++ {
+		ValidPasswordInRange(min, max)
+	}
+
+}
 func Test_checkIsValid(t *testing.T) {
 	testCases := []struct {
 		numb  int

@@ -2,7 +2,7 @@ package four
 
 import "math"
 
-// Checker takes a password and returns a Bool if it is valid. 
+// Checker takes a password and returns a true if it is valid. 
 type Checker func(p int) bool
 
 // ValidPasswordInRange returns the number of valid passwords in the given range. 
@@ -27,7 +27,8 @@ func checkIsValid(password int, checkers ...Checker) bool {
 }
 
 func checkDoesNotDecrease(p int) bool {
-	// Going from left to right, the digits never decrease; they only ever increase or stay the same (like 111123 or 135679).
+	// Going from left to right, the digits never decrease; 
+	// they only ever increase or stay the same (like 111123 or 135679).
 	last := -1
 	for i := 6; i > 0; i-- {
 		a := digit(p, i)
