@@ -10,16 +10,12 @@ type Body struct {
 	Parent    *Body
 
 	orbitCount int
-
-	routeMap map[string]int
+	routeMap   map[string]int
 }
 
 func NewBody(ID string, ParentID string) *Body {
-	p, ok := OrbitMap[ParentID]
-	if !ok {
-		// TODO: no panic
-		panic("Could not find parent")
-	}
+	p := OrbitMap[ParentID]
+
 	b := &Body{
 		ID:        ID,
 		Childeren: make([]*Body, 0),
@@ -121,10 +117,7 @@ func ProcessOrbitMap(mapStr string) {
 			if pBody, ok := OrbitMap[p]; ok {
 				cBody.Parent = pBody
 				pBody.AddChild(cBody)
-			} else {
-				// Im not sure if this is a good idea. . .
-				mapSplice = append(mapSplice, orbit)
-			}
+			} 
 		}
 
 		b := NewBody(c, p)

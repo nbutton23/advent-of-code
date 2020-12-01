@@ -2,9 +2,7 @@ package intcode
 
 import (
 	"bufio"
-	"bytes"
 	"fmt"
-	"io/ioutil"
 	"math"
 	"os"
 	"strconv"
@@ -27,8 +25,6 @@ var defaultInStream = func() int {
 type Process struct {
 	inStream       func() int
 	oStream        func(a ...interface{}) (n int, err error)
-	cmdsRan        bytes.Buffer
-	decomp         bool
 	instructionSet map[int]func(i int, c instruction) int
 
 	program            []int
@@ -50,9 +46,6 @@ func NewProccess(inStream func() int, oStream func(a ...interface{}) (n int, err
 	p := &Process{
 		inStream: inStream,
 		oStream:  oStream,
-
-		cmdsRan: bytes.Buffer{},
-		decomp:  false,
 
 		outputs:            make([]int, 0),
 		relativeBaseOffset: 0,
@@ -89,19 +82,9 @@ func (p *Process) ProcessProgram(i int, program []int) error {
 		}
 	}
 	p.IsHalted = true
-	p.WriteDecomp()
 
 	return nil
 }
-
-func (p *Process) WriteDecomp() {
-	if p.decomp {
-		tmpfile, _ := ioutil.TempFile("temp", "program-output")
-		tmpfile.Write(p.cmdsRan.Bytes())
-		tmpfile.Close()
-	}
-}
-
 
 type accessMode int
 
