@@ -2,21 +2,23 @@ package two
 
 import (
 	"fmt"
+	"regexp"
 	"strconv"
 )
 
-func parseOutInt(in string) (intFound, numCharsFound int) {
-	// TODO: This should probably we a regex and also have a parse out next string
-	var s string
-	count := 0
-	for _, c := range in {
-		if _, err := strconv.ParseInt(string(c), 10, 64); err != nil {
-			break
-		}
-		s = s + string(c)
-		count++
-	}
+var regexInt = regexp.MustCompile(`\d+`)
+var regexStr = regexp.MustCompile("[a-zA-Z]+")
 
+func parseString(in string) (string, int) {
+	s := regexStr.FindString(in)
+	c := regexStr.FindStringIndex(in)
+	return s, c[1]
+}
+
+func parseOutInt(in string) (intFound, index int) {
+	s := regexInt.FindString(in)
+	c := regexInt.FindStringIndex(in)
+	
 	i, err := strconv.ParseInt(string(s), 10, 64)
 	if err != nil {
 		fmt.Println(err)
@@ -24,7 +26,7 @@ func parseOutInt(in string) (intFound, numCharsFound int) {
 
 	}
 
-	return int(i), count
+	return int(i), c[1]
 }
 
 func parseInput(s string) (min, max int, char, password string) {
@@ -35,11 +37,11 @@ func parseInput(s string) (min, max int, char, password string) {
 	//1-3 b: cdefg
 
 	min, c := parseOutInt(s)
-	max, c2 := parseOutInt(s[c+1:])
+	max, c2 := parseOutInt(s[c:])
 	c = c + c2
-	charByte := s[c+2]
-	char = string(charByte)
-	pass := s[c+5:]
+	char, c3 := parseString(s[c:])
+	c = c + c3
+	pass, _ := parseString(s[c:])	
 
 	return min, max, char, pass
 }
