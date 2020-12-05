@@ -1,6 +1,10 @@
 package five
 
-import "strings"
+import (
+	"fmt"
+	"sort"
+	"strings"
+)
 
 func ParseTicket(s string) int {
 	// Get Row
@@ -74,4 +78,34 @@ func HighestTicket(s string) int {
 	}
 
 	return m
+}
+
+func FindEmptySeats(s string) int {
+	tickets := strings.Split(s, "\n")
+
+	seats := make([]int, 0)
+	for _, t := range tickets {
+		clean := strings.TrimSpace(t)
+		if clean == "" {
+			continue
+		}
+		id := ParseTicket(clean)
+
+		seats = append(seats, id)
+	}
+
+	sort.Ints(seats)
+
+	expected := seats[0]
+	empty := -1
+	for _, seat := range seats {
+		fmt.Println(seat)
+		if seat != expected {
+			empty = expected
+			expected++
+		}
+		expected++
+	}
+
+	return empty
 }

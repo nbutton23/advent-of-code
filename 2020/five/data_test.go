@@ -1,4 +1,6 @@
-solution = `FBBFBBBRLL
+package five
+
+var solution = `FBBFBBBRLL
 FBBFFBFLLL
 BFFFFFFLRL
 FBFBFFFLRR

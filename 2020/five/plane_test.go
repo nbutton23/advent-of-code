@@ -61,10 +61,37 @@ func TestHighestTicket(t *testing.T) {
 			`,
 			820,
 		},
+		{
+			"solution",
+			solution,
+			-1,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := HighestTicket(tt.s)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestFindEmptySeats(t *testing.T) {
+	type args struct {
+		s string
+	}
+	tests := []struct {
+		name string
+		s    string
+		want int
+	}{
+		{
+			"solution",
+			solution,
+			554,
+		}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := FindEmptySeats(tt.s)
 			assert.Equal(t, tt.want, got)
 		})
 	}
